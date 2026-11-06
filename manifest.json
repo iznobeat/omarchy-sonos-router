@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "jhgundersen.sonos-router",
+  "name": "Sonos Router",
+  "version": "0.1.0",
+  "author": "jhgundersen",
+  "license": "MIT",
+  "description": "Send any single app's audio to any Sonos (AirPlay) speaker while everything else stays on your default output.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Sonos Router",
+    "description": "Pick a Sonos/AirPlay speaker per app from the bar.",
+    "category": "Audio",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "refreshIntervalSec": 3
+    },
+    "schema": [
+      {
+        "key": "refreshIntervalSec",
+        "type": "integer",
+        "label": "Background refresh interval (seconds)",
+        "min": 1,
+        "max": 60,
+        "step": 1,
+        "defaultValue": 3
+      }
+    ]
+  }
+}

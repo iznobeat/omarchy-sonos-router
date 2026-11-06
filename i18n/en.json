@@ -1,0 +1,12 @@
+{
+  "title": "Sonos",
+  "status.active": "Playing on a speaker",
+  "status.idle": "Everything on this computer",
+  "tooltip.active": "Sonos: an app is playing on a speaker",
+  "tooltip.idle": "Sonos: send an app to a speaker",
+  "output.local": "This computer",
+  "empty.streams": "No apps are playing sound right now. Start playback and it shows up here.",
+  "empty.speakers": "No AirPlay speakers found. Check that PipeWire AirPlay discovery is enabled (see README).",
+  "error.helper": "Couldn't read audio state from the sonos-router helper.",
+  "hint.keys": "Arrows / hjkl to move · Enter to send · r sends everything back · middle-click the bar icon to send everything back"
+}

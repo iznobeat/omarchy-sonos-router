@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# sonos-router — route individual app audio streams to AirPlay (Sonos) speakers.
+#
+#   sonos-router list                 JSON: default output, outputs, app streams
+#   sonos-router move <stream> <sink> Move one app stream (sink-input index) to a sink by name
+#   sonos-router reset <stream>       Move one app stream back to the default output
+#   sonos-router reset-all            Move every app stream back to the default output
+#
+# Outputs are the current default output plus every AirPlay (RAOP) sink that
+# PipeWire's libpipewire-module-raop-discover has found on the network.
+set -euo pipefail
+
+die() { printf 'sonos-router: %s\n' "$*" >&2; exit 1; }
+need() { command -v "$1" >/dev/null 2>&1 || die "missing dependency: $1"; }
+need pactl
+need jq
+
+default_sink() { pactl get-default-sink 2>/dev/null || true; }
+
+valid_index() { [[ "${1:-}" =~ ^[0-9]+$ ]] || die "invalid stream index: ${1:-}"; }
+
+valid_sink() {
+  local name="$1"
+  [[ -n "$name" ]] || die "missing sink name"
+  pactl -f json list sinks short 2>/dev/null | jq -e --arg n "$name" 'any(.[]; .name == $n)' >/dev/null \
+    || die "unknown output: $name"
+}
+
+cmd_list() {
+  local def sinks inputs
+  def="$(default_sink)"
+  sinks="$(pactl -f json list sinks 2>/dev/null || echo '[]')"
+  inputs="$(pactl -f json list sink-inputs 2>/dev/null || echo '[]')"
+
+  jq -n --arg def "$def" --argjson sinks "$sinks" --argjson inputs "$inputs" '
+    def str: if . == null then "" else tostring end;
+    def airplay: (.name | str | startswith("raop_sink."));
+    def sinklabel: (.description // .properties["device.description"] // .name) | str;
+    def sonos: (.name | str | test("^raop_sink\\.Sonos-"));
+    def appname:
+      (.properties["application.name"] | str) as $a
+      | if ($a | test("^PipeWire ALSA \\[.*\\]$")) then ($a | sub("^PipeWire ALSA \\["; "") | sub("\\]$"; ""))
+        elif $a != "" then $a
+        else (.properties["application.process.binary"] // .properties["media.name"] // "Unknown") | str
+        end;
+
+    ($sinks | map({key: (.index | tostring), value: .name}) | from_entries) as $byIndex
+    | ($sinks | map(select(.name == $def)) | first) as $defSink
+    | {
+        default: $def,
+        outputs: (
+          (if $defSink then [{name: $defSink.name, label: ($defSink | sinklabel), kind: "default", sonos: false}] else [] end)
+          + ($sinks | map(select(airplay and .name != $def))
+                    | sort_by(sinklabel | ascii_downcase)
+                    | map({name, label: sinklabel, kind: "airplay", sonos: sonos}))
+        ),
+        streams: (
+          $inputs
+          | map(select((.properties["media.class"] | str) == "Stream/Output/Audio"))
+          | map(select((.properties["node.name"] | str) | startswith("omarchy_speaker_tuning") | not))
+          | map({
+              id: .index,
+              app: appname,
+              title: ((.properties["media.name"] | str) as $m | if $m == appname then "" else $m end),
+              sink: ($byIndex[(.sink | tostring)] // ""),
+              corked: (.corked // false)
+            })
+        )
+      }
+      | .airplayActive = (any(.streams[]; .sink | startswith("raop_sink.")))
+  '
+}
+
+cmd_move() {
+  valid_index "${1:-}"
+  valid_sink "${2:-}"
+  pactl move-sink-input "$1" "$2"
+}
+
+cmd_reset() {
+  valid_index "${1:-}"
+  local def; def="$(default_sink)"
+  [[ -n "$def" ]] || die "no default output"
+  pactl move-sink-input "$1" "$def"
+}
+
+cmd_reset_all() {
+  local def; def="$(default_sink)"
+  [[ -n "$def" ]] || die "no default output"
+  cmd_list | jq -r '.streams[] | select(.sink | startswith("raop_sink.")) | .id' | while read -r id; do
+    pactl move-sink-input "$id" "$def" || true
+  done
+}
+
+case "${1:-}" in
+  list) cmd_list ;;
+  move) shift; cmd_move "$@" ;;
+  reset) shift; cmd_reset "$@" ;;
+  reset-all) cmd_reset_all ;;
+  -h|--help|"") sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) die "unknown command: $1 (try --help)" ;;
+esac

@@ -1,0 +1,12 @@
+{
+  "title": "Sonos",
+  "status.active": "Spiller på en høyttaler",
+  "status.idle": "Alt spiller på denne maskinen",
+  "tooltip.active": "Sonos: en app spiller på en høyttaler",
+  "tooltip.idle": "Sonos: send en app til en høyttaler",
+  "output.local": "Denne maskinen",
+  "empty.streams": "Ingen apper spiller lyd nå. Start avspilling, så dukker den opp her.",
+  "empty.speakers": "Fant ingen AirPlay-høyttalere. Sjekk at AirPlay-oppdagelse i PipeWire er slått på (se README).",
+  "error.helper": "Klarte ikke å lese lydstatus fra sonos-router.",
+  "hint.keys": "Piltaster / hjkl for å flytte · Enter for å sende · r sender alt tilbake · midtklikk ikonet for å sende alt tilbake"
+}
